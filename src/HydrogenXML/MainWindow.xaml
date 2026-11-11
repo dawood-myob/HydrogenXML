@@ -183,6 +183,7 @@
 				<Separator />
 				<MenuItem Header="Copy output" Command="{Binding CopyOutputCommand}" />
 				<MenuItem Header="Save output as…" Command="{Binding SaveOutputCommand}" />
+				<MenuItem Header="Clear output" Command="{Binding ClearOutputCommand}" />
 				<MenuItem Header="Format output" Command="{Binding FormatOutputCommand}" />
 			</MenuItem>
 
@@ -426,6 +427,8 @@
 								<Button Content="Save" Command="{Binding SaveOutputCommand}" Style="{StaticResource MiniButton}" />
 								<Button Content="Format" Command="{Binding FormatOutputCommand}" Style="{StaticResource MiniButton}" />
 								<Button Content="Validate" Command="{Binding ValidateOutputCommand}" Style="{StaticResource MiniButton}" />
+								<Button Content="Clear" Command="{Binding ClearOutputCommand}" Style="{StaticResource MiniButton}"
+										ToolTip="Clear the output, messages and diagnostics before re-transforming" />
 								<CheckBox x:Name="WrapCheck" Content="Wrap" VerticalAlignment="Center" Margin="4,0,8,0"
 										  Click="WrapCheck_Click" />
 								<ComboBox ItemsSource="{Binding OutputChoices}" SelectedItem="{Binding SelectedOutputChoice, Mode=TwoWay}"

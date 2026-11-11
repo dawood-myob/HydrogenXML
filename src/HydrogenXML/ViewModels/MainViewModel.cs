@@ -106,6 +106,7 @@ public sealed class MainViewModel : ObservableObject
         FormatOutputCommand = new AsyncCommand(() => FormatAsync(Output));
         CopyOutputCommand = new RelayCommand(CopyOutput);
         SaveOutputCommand = new RelayCommand(SaveOutput);
+        ClearOutputCommand = new RelayCommand(ClearOutput);
         XPathRunCommand = new AsyncCommand(RunXPathAsync);
         ToggleThemeCommand = new RelayCommand(() => Theme = Theme == "Dark" ? "Light" : "Dark");
         OpenRecentCommand = new RelayCommand(OpenRecent);
@@ -331,6 +332,7 @@ public sealed class MainViewModel : ObservableObject
     public ICommand FormatOutputCommand { get; }
     public ICommand CopyOutputCommand { get; }
     public ICommand SaveOutputCommand { get; }
+    public ICommand ClearOutputCommand { get; }
     public ICommand XPathRunCommand { get; }
     public ICommand ToggleThemeCommand { get; }
     public ICommand OpenRecentCommand { get; }
@@ -1161,6 +1163,25 @@ public sealed class MainViewModel : ObservableObject
     }
 
     private string? _displayedOutputFile;
+
+    /// <summary>Empties the output pane, its messages and the diagnostics of the last run so the next transform starts clean.</summary>
+    private void ClearOutput()
+    {
+        var previous = _currentOutputFile;
+        _currentOutputFile = null;
+        _displayedOutputFile = null;
+        _outputIsPreview = false;
+        OnPropertyChanged(nameof(OutputIsPreview));
+        OutputChoices.Clear();
+        _selectedOutputChoice = null;
+        OnPropertyChanged(nameof(SelectedOutputChoice));
+        Output.SetText(string.Empty, markClean: true);
+        Output.Banner = null;
+        DeleteTemp(previous);
+        TransformInfo = "";
+        ClearDiagnostics();
+        Status = "Output cleared";
+    }
 
     private static void DeleteTemp(string? file)
     {
