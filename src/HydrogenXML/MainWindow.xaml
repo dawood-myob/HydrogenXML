@@ -211,27 +211,27 @@
 		<!-- Toolbar -->
 		<Border Grid.Row="1" Background="{DynamicResource App.HeaderBg}" BorderBrush="{DynamicResource App.Border}"
 				BorderThickness="0,1" Padding="6,4">
-			<StackPanel Orientation="Horizontal">
+			<WrapPanel Orientation="Horizontal">
 				<Button Content="New XSL" Command="{Binding NewXslCommand}" Style="{StaticResource MiniButton}" />
 				<Button Content="Open XSL" Command="{Binding OpenXslCommand}" Style="{StaticResource MiniButton}" />
 				<Button Content="Open XML" Command="{Binding OpenXmlCommand}" Style="{StaticResource MiniButton}" />
 				<Button Content="Save" Command="{Binding SaveCommand}" Style="{StaticResource MiniButton}" />
-				<Separator Margin="4,0" />
+				<Border Width="1" Height="20" Margin="6,0" Background="{DynamicResource App.Border}" />
 				<Button Content="▶  Transform" Command="{Binding TransformCommand}" Style="{StaticResource PrimaryButton}"
 						ToolTip="Run the transformation (F5 or Ctrl+Enter)" />
 				<CheckBox Content="Auto" IsChecked="{Binding AutoTransform, Mode=TwoWay}" VerticalAlignment="Center"
 						  Margin="6,0,6,0" ToolTip="Transform automatically after you stop typing" />
 				<ComboBox ItemsSource="{Binding DelayChoices}" SelectedItem="{Binding AutoDelayMs, Mode=TwoWay}"
-						  ItemStringFormat="{}{0} ms" Width="90" MinHeight="24" VerticalAlignment="Center"
+						  ItemStringFormat="{}{0} ms" MinWidth="110" MinHeight="24" VerticalAlignment="Center"
 						  ToolTip="Delay before an automatic transformation starts" />
 				<ProgressBar IsIndeterminate="True" Width="70" Height="6" Margin="10,0,0,0" VerticalAlignment="Center"
 							 Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
-				<Separator Margin="8,0" />
+				<Border Width="1" Height="20" Margin="8,0" Background="{DynamicResource App.Border}" />
 				<Button Content="Validate" Command="{Binding ValidateCommand}" Style="{StaticResource MiniButton}" />
 				<Button Content="Format" Command="{Binding FormatCommand}" Style="{StaticResource MiniButton}" />
 				<Button Content="Settings…" Click="Settings_Click" Style="{StaticResource MiniButton}" />
 				<Button Content="◐  Theme" Command="{Binding ToggleThemeCommand}" Style="{StaticResource MiniButton}" />
-			</StackPanel>
+			</WrapPanel>
 		</Border>
 
 		<!-- Body -->

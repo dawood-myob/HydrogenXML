@@ -11,6 +11,19 @@
 
 ---
 
+## Download and install
+
+Grab the latest build from the **[Releases page](https://github.com/dawood-myob/HydrogenXML/releases/latest)**:
+
+| File | Use it when |
+|---|---|
+| `HydrogenXML-Setup-<version>.exe` | You want a normal installer (Start menu shortcut, optional desktop icon, uninstaller). Installs per-user, no admin rights needed. |
+| `HydrogenXML-<version>-win-x64-portable.zip` | You want to unzip and run, e.g. from a USB drive or a locked-down machine. |
+
+Both are self-contained: **no .NET, Saxon or Java install required.** Windows 10/11 (64-bit).
+
+> The installer is not code-signed, so Windows SmartScreen may show *"Windows protected your PC"*. Click **More info → Run anyway**.
+
 ## Why HydrogenXML?
 
 If you build Workday integrations (Studio, EIB, Core Connectors, RaaS output, Document Transformation), you spend your day in a loop: **edit XSL → load the XML → run the transformation → read the output → fix → repeat.** Doing that with general-purpose tools means reloading files, re-running validation and copying results around every single time.
@@ -76,6 +89,21 @@ Create a portable, self-contained build that runs without installing .NET:
 
 ```powershell
 dotnet publish src\HydrogenXML\HydrogenXML.csproj -c Release -r win-x64 --self-contained -o publish
+```
+
+Build the installer and portable zip (needs [Inno Setup 6](https://jrsoftware.org/isinfo.php), `winget install JRSoftware.InnoSetup`):
+
+```powershell
+.\build-installer.ps1            # outputs to artifacts\
+```
+
+### Releasing
+
+Push a version tag and GitHub Actions builds, tests and publishes the installer and zip to a new release:
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 ## Project layout
