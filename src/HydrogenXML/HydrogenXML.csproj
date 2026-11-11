@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\HydrogenXML.ico</ApplicationIcon>
+    <AssemblyName>HydrogenXML</AssemblyName>
+    <RootNamespace>HydrogenXML</RootNamespace>
+    <Product>HydrogenXML</Product>
+    <Description>Free, lightweight XSLT editor, tester and debugger for Workday integration developers.</Description>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\HydrogenXML.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HydrogenXML.Core\HydrogenXML.Core.csproj" />
+  </ItemGroup>
+
+</Project>
+

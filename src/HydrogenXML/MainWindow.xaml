@@ -1,0 +1,567 @@
+<Window x:Class="HydrogenXML.MainWindow"
+		xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+		xmlns:views="clr-namespace:HydrogenXML.Views"
+		xmlns:core="clr-namespace:HydrogenXML.Core.Models;assembly=HydrogenXML.Core"
+		x:Name="Root"
+		Title="{Binding WindowTitle}" Width="1500" Height="900" MinWidth="900" MinHeight="560"
+		Background="{DynamicResource App.Bg}" Foreground="{DynamicResource App.Fg}"
+		Icon="Assets/HydrogenXML.ico" AllowDrop="True">
+	<Window.Resources>
+		<BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+		<DataTemplate x:Key="TabHeaderTemplate">
+			<StackPanel Orientation="Horizontal" Background="Transparent" ToolTip="{Binding FullTitle}"
+						PreviewMouseDown="TabHeader_MouseDown">
+				<StackPanel.ContextMenu>
+					<ContextMenu>
+						<MenuItem Header="Save" Click="TabSave_Click" />
+						<MenuItem Header="Save as…" Click="TabSaveAs_Click" />
+						<MenuItem Header="Reload from disk" Click="TabReload_Click" />
+						<Separator />
+						<MenuItem Header="Copy full path" Click="TabCopyPath_Click" />
+						<MenuItem Header="Show in Explorer" Click="TabExplorer_Click" />
+						<Separator />
+						<MenuItem Header="Close" Click="TabClose_Click" />
+					</ContextMenu>
+				</StackPanel.ContextMenu>
+				<TextBlock Text="{Binding Header}" VerticalAlignment="Center" />
+				<Button Content="✕" Margin="8,0,0,0" Padding="4,0" FontSize="10" Background="Transparent"
+						BorderThickness="0" Foreground="{DynamicResource App.SubtleFg}" Focusable="False"
+						ToolTip="Close (Ctrl+W)" Click="TabClose_Click" />
+			</StackPanel>
+		</DataTemplate>
+
+		<DataTemplate x:Key="EditorTemplate">
+			<views:EditorTabView />
+		</DataTemplate>
+
+		<Style x:Key="DiagItemStyle" TargetType="ListViewItem" BasedOn="{StaticResource {x:Type ListViewItem}}">
+			<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+			<EventSetter Event="MouseDoubleClick" Handler="DiagRow_DoubleClick" />
+			<Style.Triggers>
+				<DataTrigger Binding="{Binding Diagnostic.Severity}" Value="{x:Static core:DiagnosticSeverity.Error}">
+					<Setter Property="Foreground" Value="{DynamicResource App.ErrorFg}" />
+				</DataTrigger>
+				<DataTrigger Binding="{Binding Diagnostic.Severity}" Value="{x:Static core:DiagnosticSeverity.Warning}">
+					<Setter Property="Foreground" Value="{DynamicResource App.WarnFg}" />
+				</DataTrigger>
+			</Style.Triggers>
+		</Style>
+
+		<Style x:Key="LibraryItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+			<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+		</Style>
+
+		<GroupStyle x:Key="LibraryGroupStyle">
+			<GroupStyle.HeaderTemplate>
+				<DataTemplate>
+					<TextBlock Text="{Binding Name}" FontWeight="SemiBold" Margin="0,6,0,2"
+							   Foreground="{DynamicResource App.SubtleFg}" />
+				</DataTemplate>
+			</GroupStyle.HeaderTemplate>
+		</GroupStyle>
+
+		<Style x:Key="PaneTitle" TargetType="TextBlock">
+			<Setter Property="FontWeight" Value="SemiBold" />
+			<Setter Property="VerticalAlignment" Value="Center" />
+			<Setter Property="Margin" Value="4,0,12,0" />
+			<Setter Property="Foreground" Value="{DynamicResource App.SubtleFg}" />
+		</Style>
+
+		<Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource MiniButton}">
+			<Setter Property="Background" Value="{DynamicResource App.Accent}" />
+			<Setter Property="Foreground" Value="{DynamicResource App.AccentFg}" />
+			<Setter Property="FontWeight" Value="SemiBold" />
+		</Style>
+	</Window.Resources>
+
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="*" />
+			<RowDefinition Height="Auto" />
+		</Grid.RowDefinitions>
+
+		<!-- Menu -->
+		<Menu Grid.Row="0">
+			<MenuItem Header="_File">
+				<MenuItem Header="New XSL stylesheet" Command="{Binding NewXslCommand}" InputGestureText="Ctrl+N" />
+				<MenuItem Header="New XML document" Command="{Binding NewXmlCommand}" InputGestureText="Ctrl+Shift+N" />
+				<MenuItem Header="New XSL from template…" Click="NewFromTemplateMenu_Click" />
+				<Separator />
+				<MenuItem Header="Open XSL…" Command="{Binding OpenXslCommand}" InputGestureText="Ctrl+O" />
+				<MenuItem Header="Open XML…" Command="{Binding OpenXmlCommand}" InputGestureText="Ctrl+Shift+O" />
+				<MenuItem Header="Open recent XSL" ItemsSource="{Binding RecentXsl}">
+					<MenuItem.ItemContainerStyle>
+						<Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+							<Setter Property="Header" Value="{Binding Name}" />
+							<Setter Property="ToolTip" Value="{Binding Path}" />
+							<Setter Property="Command" Value="{Binding DataContext.OpenRecentCommand, ElementName=Root}" />
+							<Setter Property="CommandParameter" Value="{Binding}" />
+						</Style>
+					</MenuItem.ItemContainerStyle>
+				</MenuItem>
+				<MenuItem Header="Open recent XML" ItemsSource="{Binding RecentXml}">
+					<MenuItem.ItemContainerStyle>
+						<Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+							<Setter Property="Header" Value="{Binding Name}" />
+							<Setter Property="ToolTip" Value="{Binding Path}" />
+							<Setter Property="Command" Value="{Binding DataContext.OpenRecentCommand, ElementName=Root}" />
+							<Setter Property="CommandParameter" Value="{Binding}" />
+						</Style>
+					</MenuItem.ItemContainerStyle>
+				</MenuItem>
+				<Separator />
+				<MenuItem Header="Save" Command="{Binding SaveCommand}" InputGestureText="Ctrl+S" />
+				<MenuItem Header="Save as…" Command="{Binding SaveAsCommand}" InputGestureText="Ctrl+Shift+S" />
+				<MenuItem Header="Save all" Command="{Binding SaveAllCommand}" InputGestureText="Ctrl+Alt+S" />
+				<MenuItem Header="Reload from disk" Command="{Binding ReloadCommand}" InputGestureText="Ctrl+R" />
+				<MenuItem Header="Close tab" Command="{Binding CloseDocumentCommand}" InputGestureText="Ctrl+W" />
+				<Separator />
+				<MenuItem Header="Workspace">
+					<MenuItem Header="New workspace…" Command="{Binding NewWorkspaceCommand}" />
+					<MenuItem Header="Open workspace…" Command="{Binding OpenWorkspaceCommand}" />
+					<MenuItem Header="Save workspace" Command="{Binding SaveWorkspaceCommand}" />
+					<MenuItem Header="Save workspace as…" Command="{Binding SaveWorkspaceAsCommand}" />
+					<MenuItem Header="Recent workspaces" ItemsSource="{Binding RecentWorkspaces}">
+						<MenuItem.ItemContainerStyle>
+							<Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+								<Setter Property="Header" Value="{Binding}" />
+								<Setter Property="Command" Value="{Binding DataContext.OpenRecentWorkspaceCommand, ElementName=Root}" />
+								<Setter Property="CommandParameter" Value="{Binding}" />
+							</Style>
+						</MenuItem.ItemContainerStyle>
+					</MenuItem>
+				</MenuItem>
+				<Separator />
+				<MenuItem Header="E_xit" Click="Exit_Click" InputGestureText="Alt+F4" />
+			</MenuItem>
+
+			<MenuItem Header="_Edit">
+				<MenuItem Header="Undo" Click="Undo_Click" InputGestureText="Ctrl+Z" />
+				<MenuItem Header="Redo" Click="Redo_Click" InputGestureText="Ctrl+Y" />
+				<Separator />
+				<MenuItem Header="Cut" Click="Cut_Click" InputGestureText="Ctrl+X" />
+				<MenuItem Header="Copy" Click="Copy_Click" InputGestureText="Ctrl+C" />
+				<MenuItem Header="Paste" Click="Paste_Click" InputGestureText="Ctrl+V" />
+				<MenuItem Header="Select all" Click="SelectAll_Click" InputGestureText="Ctrl+A" />
+				<Separator />
+				<MenuItem Header="Find…" Click="Find_Click" InputGestureText="Ctrl+F" />
+				<MenuItem Header="Find and replace…" Click="Replace_Click" InputGestureText="Ctrl+H" />
+				<MenuItem Header="Go to line…" Click="GoToLine_Click" InputGestureText="Ctrl+G" />
+				<Separator />
+				<MenuItem Header="Toggle bookmark" Click="ToggleBookmark_Click" InputGestureText="Ctrl+F2" />
+				<MenuItem Header="Next bookmark" Click="NextBookmark_Click" InputGestureText="F2" />
+				<MenuItem Header="Previous bookmark" Click="PrevBookmark_Click" InputGestureText="Shift+F2" />
+				<MenuItem Header="Clear bookmarks in document" Click="ClearBookmarks_Click" />
+				<Separator />
+				<MenuItem Header="Collapse all nodes" Click="FoldAll_Click" />
+				<MenuItem Header="Expand all nodes" Click="UnfoldAll_Click" />
+			</MenuItem>
+
+			<MenuItem Header="_XSLT">
+				<MenuItem Header="Transform" Command="{Binding TransformCommand}" InputGestureText="F5 / Ctrl+Enter" />
+				<MenuItem Header="Auto-transform" IsCheckable="True" IsChecked="{Binding AutoTransform, Mode=TwoWay}" />
+				<MenuItem Header="Pretty-print output" IsCheckable="True" IsChecked="{Binding PrettyPrint, Mode=TwoWay}" />
+				<MenuItem Header="Transformation settings…" Click="Settings_Click" InputGestureText="Ctrl+," />
+				<Separator />
+				<MenuItem Header="Validate current document" Command="{Binding ValidateCommand}" InputGestureText="F7" />
+				<MenuItem Header="Validate XSL stylesheet" Command="{Binding ValidateXslCommand}" />
+				<MenuItem Header="Validate XML source" Command="{Binding ValidateXmlCommand}" />
+				<MenuItem Header="Validate output" Command="{Binding ValidateOutputCommand}" />
+				<Separator />
+				<MenuItem Header="Format document" Command="{Binding FormatCommand}" InputGestureText="Ctrl+Shift+F" />
+				<MenuItem Header="Clear diagnostics" Command="{Binding ClearDiagnosticsCommand}" />
+			</MenuItem>
+
+			<MenuItem Header="_Tools">
+				<MenuItem Header="XPath console" Click="XPathConsole_Click" InputGestureText="Ctrl+Shift+X" />
+				<MenuItem Header="Add current XML as sample…" Command="{Binding AddCurrentAsSampleCommand}" />
+				<MenuItem Header="Save current XSL as template…" Command="{Binding SaveAsTemplateCommand}" />
+				<Separator />
+				<MenuItem Header="Copy output" Command="{Binding CopyOutputCommand}" />
+				<MenuItem Header="Save output as…" Command="{Binding SaveOutputCommand}" />
+				<MenuItem Header="Format output" Command="{Binding FormatOutputCommand}" />
+			</MenuItem>
+
+			<MenuItem Header="_View">
+				<MenuItem x:Name="ViewSidebar" Header="Sidebar" IsCheckable="True" Click="ToggleSidebar_Click" InputGestureText="Ctrl+B" />
+				<MenuItem x:Name="ViewBottom" Header="Diagnostics panel" IsCheckable="True" Click="ToggleBottom_Click" InputGestureText="Ctrl+J" />
+				<MenuItem x:Name="ViewXml" Header="XML input pane" IsCheckable="True" Click="ToggleXmlPane_Click" />
+				<MenuItem x:Name="ViewOutput" Header="Output pane" IsCheckable="True" Click="ToggleOutputPane_Click" />
+				<MenuItem x:Name="ViewSplit" Header="Split editors horizontally" IsCheckable="True" Click="ToggleSplit_Click" />
+				<MenuItem x:Name="ViewWrap" Header="Word wrap in output" IsCheckable="True" Click="ToggleWrap_Click" />
+				<Separator />
+				<MenuItem Header="Toggle light / dark theme" Command="{Binding ToggleThemeCommand}" InputGestureText="Ctrl+T" />
+				<MenuItem Header="Zoom in" Click="ZoomIn_Click" InputGestureText="Ctrl++" />
+				<MenuItem Header="Zoom out" Click="ZoomOut_Click" InputGestureText="Ctrl+-" />
+				<MenuItem Header="Reset zoom" Click="ZoomReset_Click" InputGestureText="Ctrl+0" />
+				<Separator />
+				<MenuItem Header="Reset layout" Click="ResetLayout_Click" />
+			</MenuItem>
+
+			<MenuItem Header="_Help">
+				<MenuItem Header="Keyboard shortcuts" Click="Shortcuts_Click" />
+				<MenuItem Header="About HydrogenXML" Click="About_Click" />
+			</MenuItem>
+		</Menu>
+
+		<!-- Toolbar -->
+		<Border Grid.Row="1" Background="{DynamicResource App.HeaderBg}" BorderBrush="{DynamicResource App.Border}"
+				BorderThickness="0,1" Padding="6,4">
+			<StackPanel Orientation="Horizontal">
+				<Button Content="New XSL" Command="{Binding NewXslCommand}" Style="{StaticResource MiniButton}" />
+				<Button Content="Open XSL" Command="{Binding OpenXslCommand}" Style="{StaticResource MiniButton}" />
+				<Button Content="Open XML" Command="{Binding OpenXmlCommand}" Style="{StaticResource MiniButton}" />
+				<Button Content="Save" Command="{Binding SaveCommand}" Style="{StaticResource MiniButton}" />
+				<Separator Margin="4,0" />
+				<Button Content="▶  Transform" Command="{Binding TransformCommand}" Style="{StaticResource PrimaryButton}"
+						ToolTip="Run the transformation (F5 or Ctrl+Enter)" />
+				<CheckBox Content="Auto" IsChecked="{Binding AutoTransform, Mode=TwoWay}" VerticalAlignment="Center"
+						  Margin="6,0,6,0" ToolTip="Transform automatically after you stop typing" />
+				<ComboBox ItemsSource="{Binding DelayChoices}" SelectedItem="{Binding AutoDelayMs, Mode=TwoWay}"
+						  ItemStringFormat="{}{0} ms" Width="90" MinHeight="24" VerticalAlignment="Center"
+						  ToolTip="Delay before an automatic transformation starts" />
+				<ProgressBar IsIndeterminate="True" Width="70" Height="6" Margin="10,0,0,0" VerticalAlignment="Center"
+							 Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+				<Separator Margin="8,0" />
+				<Button Content="Validate" Command="{Binding ValidateCommand}" Style="{StaticResource MiniButton}" />
+				<Button Content="Format" Command="{Binding FormatCommand}" Style="{StaticResource MiniButton}" />
+				<Button Content="Settings…" Click="Settings_Click" Style="{StaticResource MiniButton}" />
+				<Button Content="◐  Theme" Command="{Binding ToggleThemeCommand}" Style="{StaticResource MiniButton}" />
+			</StackPanel>
+		</Border>
+
+		<!-- Body -->
+		<Grid Grid.Row="2" x:Name="BodyGrid">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition x:Name="SidebarCol" Width="240" MinWidth="0" />
+				<ColumnDefinition x:Name="SidebarSplitCol" Width="4" />
+				<ColumnDefinition Width="*" />
+			</Grid.ColumnDefinitions>
+
+			<!-- Sidebar -->
+			<TabControl x:Name="SidebarTabs" Grid.Column="0" Background="{DynamicResource App.PanelBg}">
+				<TabItem Header="Samples">
+					<DockPanel>
+						<WrapPanel DockPanel.Dock="Top" Margin="4">
+							<Button Content="Add files…" Command="{Binding AddSampleFilesCommand}" Style="{StaticResource MiniButton}" />
+							<Button Content="New dataset…" Command="{Binding NewDatasetCommand}" Style="{StaticResource MiniButton}" />
+							<Button Content="New sample…" Command="{Binding NewSampleCommand}" Style="{StaticResource MiniButton}" />
+							<Button Content="Add current XML" Command="{Binding AddCurrentAsSampleCommand}" Style="{StaticResource MiniButton}" />
+						</WrapPanel>
+						<ListBox x:Name="SamplesList" ItemsSource="{Binding SamplesView}" BorderThickness="0"
+								 Background="Transparent" ItemContainerStyle="{StaticResource LibraryItemStyle}"
+								 MouseDoubleClick="SamplesList_DoubleClick">
+							<ListBox.GroupStyle>
+								<StaticResource ResourceKey="LibraryGroupStyle" />
+							</ListBox.GroupStyle>
+							<ListBox.ItemTemplate>
+								<DataTemplate>
+									<StackPanel Margin="8,1" ToolTip="{Binding Path}">
+										<StackPanel.ContextMenu>
+											<ContextMenu>
+												<MenuItem Header="Open as XML input" Click="SampleOpen_Click" />
+												<MenuItem Header="New sample in this dataset…" Click="SampleNew_Click" />
+												<MenuItem Header="Delete…" Click="SampleDelete_Click" />
+											</ContextMenu>
+										</StackPanel.ContextMenu>
+										<TextBlock Text="{Binding Name}" />
+									</StackPanel>
+								</DataTemplate>
+							</ListBox.ItemTemplate>
+						</ListBox>
+					</DockPanel>
+				</TabItem>
+
+				<TabItem Header="Templates">
+					<DockPanel>
+						<WrapPanel DockPanel.Dock="Top" Margin="4">
+							<Button Content="Save current XSL…" Command="{Binding SaveAsTemplateCommand}" Style="{StaticResource MiniButton}" />
+							<Button Content="Refresh" Command="{Binding RefreshLibraryCommand}" Style="{StaticResource MiniButton}" />
+						</WrapPanel>
+						<ListBox x:Name="TemplatesList" ItemsSource="{Binding TemplatesView}" BorderThickness="0"
+								 Background="Transparent" ItemContainerStyle="{StaticResource LibraryItemStyle}"
+								 MouseDoubleClick="TemplatesList_DoubleClick">
+							<ListBox.GroupStyle>
+								<StaticResource ResourceKey="LibraryGroupStyle" />
+							</ListBox.GroupStyle>
+							<ListBox.ItemTemplate>
+								<DataTemplate>
+									<StackPanel Margin="8,2" ToolTip="{Binding Description}">
+										<StackPanel.ContextMenu>
+											<ContextMenu>
+												<MenuItem Header="New stylesheet from template" Click="TemplateNew_Click" />
+												<MenuItem Header="Delete…" Click="TemplateDelete_Click" />
+											</ContextMenu>
+										</StackPanel.ContextMenu>
+										<TextBlock Text="{Binding Name}" />
+										<TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap"
+												   Foreground="{DynamicResource App.SubtleFg}" />
+									</StackPanel>
+								</DataTemplate>
+							</ListBox.ItemTemplate>
+						</ListBox>
+					</DockPanel>
+				</TabItem>
+
+				<TabItem Header="Snippets">
+					<DockPanel>
+						<TextBlock DockPanel.Dock="Top" Margin="8,6" TextWrapping="Wrap" FontSize="11"
+								   Foreground="{DynamicResource App.SubtleFg}"
+								   Text="Double-click a snippet to insert it at the caret in the active XSL editor." />
+						<ListBox x:Name="SnippetsList" ItemsSource="{Binding Snippets}" BorderThickness="0"
+								 Background="Transparent" ItemContainerStyle="{StaticResource LibraryItemStyle}"
+								 MouseDoubleClick="SnippetsList_DoubleClick">
+							<ListBox.ItemTemplate>
+								<DataTemplate>
+									<StackPanel Margin="8,2" ToolTip="{Binding Content}">
+										<TextBlock Text="{Binding Name}" />
+										<TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap"
+												   Foreground="{DynamicResource App.SubtleFg}" />
+									</StackPanel>
+								</DataTemplate>
+							</ListBox.ItemTemplate>
+						</ListBox>
+					</DockPanel>
+				</TabItem>
+
+				<TabItem Header="Recent">
+					<Grid>
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="*" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="*" />
+						</Grid.RowDefinitions>
+						<TextBlock Text="Recent XSL files" Style="{StaticResource PaneTitle}" Margin="8,6" />
+						<ListBox Grid.Row="1" ItemsSource="{Binding RecentXsl}" BorderThickness="0" Background="Transparent"
+								 MouseDoubleClick="RecentList_DoubleClick">
+							<ListBox.ItemTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding Name}" ToolTip="{Binding Path}" Margin="4,1" />
+								</DataTemplate>
+							</ListBox.ItemTemplate>
+						</ListBox>
+						<TextBlock Grid.Row="2" Text="Recent XML files" Style="{StaticResource PaneTitle}" Margin="8,6" />
+						<ListBox Grid.Row="3" ItemsSource="{Binding RecentXml}" BorderThickness="0" Background="Transparent"
+								 MouseDoubleClick="RecentList_DoubleClick">
+							<ListBox.ItemTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding Name}" ToolTip="{Binding Path}" Margin="4,1" />
+								</DataTemplate>
+							</ListBox.ItemTemplate>
+						</ListBox>
+					</Grid>
+				</TabItem>
+			</TabControl>
+
+			<GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Style="{StaticResource PaneSplitter}" Width="4" />
+
+			<!-- Centre: three panes + bottom panel -->
+			<Grid Grid.Column="2" x:Name="CenterGrid">
+				<Grid.RowDefinitions>
+					<RowDefinition Height="*" MinHeight="120" />
+					<RowDefinition x:Name="BottomSplitRow" Height="4" />
+					<RowDefinition x:Name="BottomRow" Height="220" />
+				</Grid.RowDefinitions>
+
+				<Grid x:Name="PanesGrid">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition x:Name="XmlCol" Width="1*" MinWidth="0" />
+						<ColumnDefinition x:Name="Split1Col" Width="4" />
+						<ColumnDefinition x:Name="XslCol" Width="1.3*" MinWidth="120" />
+						<ColumnDefinition x:Name="Split2Col" Width="4" />
+						<ColumnDefinition x:Name="OutCol" Width="1*" MinWidth="0" />
+					</Grid.ColumnDefinitions>
+
+					<!-- Left: XML input -->
+					<DockPanel x:Name="XmlPane" Grid.Column="0">
+						<Border DockPanel.Dock="Top" Style="{StaticResource PaneToolbar}">
+							<StackPanel Orientation="Horizontal">
+								<TextBlock Text="INPUT XML" Style="{StaticResource PaneTitle}" />
+								<Button Content="New" Command="{Binding NewXmlCommand}" Style="{StaticResource MiniButton}" />
+								<Button Content="Open" Command="{Binding OpenXmlCommand}" Style="{StaticResource MiniButton}" />
+								<Button Content="Format" Click="FormatXml_Click" Style="{StaticResource MiniButton}" />
+								<Button Content="Validate" Command="{Binding ValidateXmlCommand}" Style="{StaticResource MiniButton}" />
+							</StackPanel>
+						</Border>
+						<TabControl x:Name="XmlTabs" ItemsSource="{Binding XmlDocs}"
+									SelectedItem="{Binding SelectedXml, Mode=TwoWay}"
+									ItemTemplate="{StaticResource TabHeaderTemplate}"
+									ContentTemplate="{StaticResource EditorTemplate}" BorderThickness="0" Padding="0" />
+					</DockPanel>
+
+					<GridSplitter x:Name="Split1" Grid.Column="1" Style="{StaticResource PaneSplitter}" Width="4" />
+
+					<!-- Centre: XSL -->
+					<DockPanel x:Name="XslPane" Grid.Column="2">
+						<Border DockPanel.Dock="Top" Style="{StaticResource PaneToolbar}">
+							<StackPanel Orientation="Horizontal">
+								<TextBlock Text="XSLT" Style="{StaticResource PaneTitle}" />
+								<Button Content="New" Command="{Binding NewXslCommand}" Style="{StaticResource MiniButton}" />
+								<Button Content="Open" Command="{Binding OpenXslCommand}" Style="{StaticResource MiniButton}" />
+								<Button Content="Save" Click="SaveXsl_Click" Style="{StaticResource MiniButton}" />
+								<Button Content="Format" Click="FormatXsl_Click" Style="{StaticResource MiniButton}" />
+								<Button Content="Validate" Command="{Binding ValidateXslCommand}" Style="{StaticResource MiniButton}" />
+								<Button Content="▶ Transform" Command="{Binding TransformCommand}" Style="{StaticResource PrimaryButton}" />
+							</StackPanel>
+						</Border>
+						<TabControl x:Name="XslTabs" ItemsSource="{Binding XslDocs}"
+									SelectedItem="{Binding SelectedXsl, Mode=TwoWay}"
+									ItemTemplate="{StaticResource TabHeaderTemplate}"
+									ContentTemplate="{StaticResource EditorTemplate}" BorderThickness="0" Padding="0" />
+					</DockPanel>
+
+					<GridSplitter x:Name="Split2" Grid.Column="3" Style="{StaticResource PaneSplitter}" Width="4" />
+
+					<!-- Right: output -->
+					<DockPanel x:Name="OutputPane" Grid.Column="4">
+						<Border DockPanel.Dock="Top" Style="{StaticResource PaneToolbar}">
+							<StackPanel Orientation="Horizontal">
+								<TextBlock Text="OUTPUT" Style="{StaticResource PaneTitle}" />
+								<Button Content="Copy" Command="{Binding CopyOutputCommand}" Style="{StaticResource MiniButton}" />
+								<Button Content="Save" Command="{Binding SaveOutputCommand}" Style="{StaticResource MiniButton}" />
+								<Button Content="Format" Command="{Binding FormatOutputCommand}" Style="{StaticResource MiniButton}" />
+								<Button Content="Validate" Command="{Binding ValidateOutputCommand}" Style="{StaticResource MiniButton}" />
+								<CheckBox x:Name="WrapCheck" Content="Wrap" VerticalAlignment="Center" Margin="4,0,8,0"
+										  Click="WrapCheck_Click" />
+								<ComboBox ItemsSource="{Binding OutputChoices}" SelectedItem="{Binding SelectedOutputChoice, Mode=TwoWay}"
+										  MinWidth="140" MinHeight="24" ToolTip="Additional result documents (xsl:result-document)">
+									<ComboBox.Style>
+										<Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+											<Style.Triggers>
+												<DataTrigger Binding="{Binding OutputChoices.Count}" Value="0">
+													<Setter Property="Visibility" Value="Collapsed" />
+												</DataTrigger>
+												<DataTrigger Binding="{Binding OutputChoices.Count}" Value="1">
+													<Setter Property="Visibility" Value="Collapsed" />
+												</DataTrigger>
+											</Style.Triggers>
+										</Style>
+									</ComboBox.Style>
+								</ComboBox>
+							</StackPanel>
+						</Border>
+						<TabControl x:Name="OutputTabs" BorderThickness="0" Padding="0">
+							<TabItem Header="Output">
+								<views:EditorTabView DataContext="{Binding Output}" />
+							</TabItem>
+							<TabItem Header="{Binding MessagesHeader}">
+								<ListView x:Name="MessagesList" ItemsSource="{Binding Messages}" BorderThickness="0"
+										  Background="Transparent" MouseDoubleClick="MessageRow_DoubleClick">
+									<ListView.View>
+										<GridView>
+											<GridViewColumn Header="" Width="28" DisplayMemberBinding="{Binding Icon}" />
+											<GridViewColumn Header="Message" Width="360" DisplayMemberBinding="{Binding Text}" />
+											<GridViewColumn Header="Location" Width="120" DisplayMemberBinding="{Binding Location}" />
+										</GridView>
+									</ListView.View>
+								</ListView>
+							</TabItem>
+						</TabControl>
+					</DockPanel>
+				</Grid>
+
+				<GridSplitter x:Name="BottomSplitter" Grid.Row="1" Style="{StaticResource PaneSplitter}" Height="4"
+							  ResizeDirection="Rows" />
+
+				<!-- Bottom panel -->
+				<TabControl x:Name="BottomTabs" Grid.Row="2" Background="{DynamicResource App.PanelBg}">
+					<TabItem Header="{Binding DiagnosticsHeader}">
+						<ListView ItemsSource="{Binding Diagnostics}" BorderThickness="0" Background="Transparent"
+								  ItemContainerStyle="{StaticResource DiagItemStyle}">
+							<ListView.View>
+								<GridView>
+									<GridViewColumn Header="" Width="28" DisplayMemberBinding="{Binding Icon}" />
+									<GridViewColumn Header="Category" Width="110" DisplayMemberBinding="{Binding Category}" />
+									<GridViewColumn Header="File" Width="170" DisplayMemberBinding="{Binding FileName}" />
+									<GridViewColumn Header="Line" Width="55" DisplayMemberBinding="{Binding Line}" />
+									<GridViewColumn Header="Col" Width="50" DisplayMemberBinding="{Binding Column}" />
+									<GridViewColumn Header="Message" Width="900" DisplayMemberBinding="{Binding Message}" />
+								</GridView>
+							</ListView.View>
+						</ListView>
+					</TabItem>
+					<TabItem Header="Validation">
+						<ListView ItemsSource="{Binding ValidationRows}" BorderThickness="0" Background="Transparent"
+								  ItemContainerStyle="{StaticResource DiagItemStyle}">
+							<ListView.View>
+								<GridView>
+									<GridViewColumn Header="" Width="28" DisplayMemberBinding="{Binding Icon}" />
+									<GridViewColumn Header="Category" Width="110" DisplayMemberBinding="{Binding Category}" />
+									<GridViewColumn Header="File" Width="170" DisplayMemberBinding="{Binding FileName}" />
+									<GridViewColumn Header="Line" Width="55" DisplayMemberBinding="{Binding Line}" />
+									<GridViewColumn Header="Col" Width="50" DisplayMemberBinding="{Binding Column}" />
+									<GridViewColumn Header="Message" Width="900" DisplayMemberBinding="{Binding Message}" />
+								</GridView>
+							</ListView.View>
+						</ListView>
+					</TabItem>
+					<TabItem Header="XPath">
+						<Grid>
+							<Grid.RowDefinitions>
+								<RowDefinition Height="Auto" />
+								<RowDefinition Height="Auto" />
+								<RowDefinition Height="*" />
+							</Grid.RowDefinitions>
+							<Grid Margin="6,6,6,2">
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" />
+									<ColumnDefinition Width="*" />
+									<ColumnDefinition Width="Auto" />
+								</Grid.ColumnDefinitions>
+								<TextBlock Text="XPath:" VerticalAlignment="Center" Margin="0,0,8,0" />
+								<ComboBox x:Name="XPathBox" Grid.Column="1" IsEditable="True"
+										  ItemsSource="{Binding XPathHistory}" Text="{Binding XPathExpression, UpdateSourceTrigger=PropertyChanged}"
+										  FontFamily="Cascadia Mono, Consolas" PreviewKeyDown="XPathBox_KeyDown" />
+								<Button Grid.Column="2" Content="Run (Enter)" Command="{Binding XPathRunCommand}"
+										Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" />
+							</Grid>
+							<TextBlock Grid.Row="1" Text="{Binding XPathStatus}" Margin="8,2" Foreground="{DynamicResource App.SubtleFg}" />
+							<ListView Grid.Row="2" x:Name="XPathList" ItemsSource="{Binding XPathResults}" BorderThickness="0"
+									  Background="Transparent" MouseDoubleClick="XPathRow_DoubleClick">
+								<ListView.View>
+									<GridView>
+										<GridViewColumn Header="#" Width="45" DisplayMemberBinding="{Binding Index}" />
+										<GridViewColumn Header="Kind" Width="80" DisplayMemberBinding="{Binding Kind}" />
+										<GridViewColumn Header="Name" Width="160" DisplayMemberBinding="{Binding Name}" />
+										<GridViewColumn Header="Line" Width="55" DisplayMemberBinding="{Binding LineText}" />
+										<GridViewColumn Header="Value" Width="900" DisplayMemberBinding="{Binding Value}" />
+									</GridView>
+								</ListView.View>
+							</ListView>
+						</Grid>
+					</TabItem>
+					<TabItem Header="Bookmarks">
+						<ListView x:Name="BookmarksList" ItemsSource="{Binding BookmarkItems}" BorderThickness="0"
+								  Background="Transparent" MouseDoubleClick="Bookmark_DoubleClick">
+							<ListView.View>
+								<GridView>
+									<GridViewColumn Header="Document" Width="200" DisplayMemberBinding="{Binding DocumentTitle}" />
+									<GridViewColumn Header="Line" Width="60" DisplayMemberBinding="{Binding Line}" />
+									<GridViewColumn Header="Text" Width="900" DisplayMemberBinding="{Binding Preview}" />
+								</GridView>
+							</ListView.View>
+						</ListView>
+					</TabItem>
+				</TabControl>
+			</Grid>
+		</Grid>
+
+		<!-- Status bar -->
+		<Border Grid.Row="3" Background="{DynamicResource App.Status}" Padding="10,3">
+			<DockPanel TextElement.Foreground="White">
+				<TextBlock x:Name="CaretText" DockPanel.Dock="Right" Margin="16,0,0,0" />
+				<TextBlock DockPanel.Dock="Right" Margin="16,0,0,0">
+					<Run Text="✖" /><Run Text="{Binding ErrorCount, Mode=OneWay}" />
+					<Run Text="  ⚠" /><Run Text="{Binding WarningCount, Mode=OneWay}" />
+				</TextBlock>
+				<TextBlock DockPanel.Dock="Right" Margin="16,0,0,0" Text="{Binding TransformInfo}" />
+				<TextBlock Text="{Binding Status}" TextTrimming="CharacterEllipsis" />
+			</DockPanel>
+		</Border>
+	</Grid>
+</Window>
